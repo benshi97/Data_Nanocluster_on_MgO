@@ -434,6 +434,8 @@ def find_energy(filename, typ="ccsdt", code_format="mrcc"):
             search_word = "CCSD correlation energy + MP2 + PPL corr. [au]:"
         elif typ == "fnoccsdt_mp2":
             search_word = "DF-MP2 correlation energy"
+        elif typ == "ccsdtq":
+            search_word = "Total CCSDT(Q) energy [au]:"
 
         elif typ == "ccsd":
             search_word = "CCSD correlation energy [au]: "
