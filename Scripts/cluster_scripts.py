@@ -7,6 +7,7 @@ import numpy as np
 from ase import units
 from scipy.stats import linregress
 from datetime import datetime
+from typing import Dict, Any, List, Tuple
 
 # Some constants
 Hartree = 27.211386245988
@@ -578,3 +579,36 @@ def find_energy(filename, typ="ccsdt", code_format="mrcc"):
             return 0.0
         else:
             return float(a[-1].split()[-2])
+
+
+def read_vib_freq(fpath,lines=None) -> Tuple[List[float], List[float]]:
+    """Read vibrational frequencies.
+
+    Returns:
+        List of real and list of imaginary frequencies
+        (imaginary number as real number).
+    """
+    freq = []
+    i_freq = []
+    
+    if not lines:    
+        filename = f'{fpath}/OUTCAR'
+        with open(filename, 'r') as fd:
+            lines=fd.readlines()
+
+    for line in lines:
+        data = line.split()
+        if 'THz' in data:
+            if 'f/i=' not in data:
+                freq.append(float(data[-2]))
+            else:
+                i_freq.append(float(data[-2]))
+    return freq, i_freq
+
+def calculate_zpe(fpath):
+    
+    real_freq,i_freq=read_vib_freq(fpath,lines=None)
+    real_freq=np.array(real_freq)
+    zpe=0.5*np.sum(real_freq)
+    
+    return zpe
