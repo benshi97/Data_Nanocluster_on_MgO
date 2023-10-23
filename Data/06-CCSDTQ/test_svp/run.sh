@@ -2,7 +2,7 @@
 
 set -e
 
-for i in CCSDTQ #CCSDTQ #CCSDT CCSDTQ
+for i in CCSDT #CCSDTQ #CCSDTQ #CCSDT CCSDTQ
 do
         for j in Cu Ag Au #Ag # Cu
                 do
@@ -14,7 +14,7 @@ do
                                                                                                                                                 sed -i 's/210GB/1500GB/g' MINP
                
                sed -i 's/def2-SVP/def2-SV(P)/g' MINP                                                                                                                                                         
-               cp ../../young_mrcc.sh .
+               cp ../../young_mrcc_${i}.sh young_mrcc.sh
                                                                                                                                                                                                qsub ./young_mrcc.sh
                                                                                                                                                                                                                         cd ../../
                                                                                                                                                                                                                                         done
