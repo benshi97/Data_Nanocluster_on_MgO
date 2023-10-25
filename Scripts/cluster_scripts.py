@@ -8,12 +8,141 @@ from ase import units
 from scipy.stats import linregress
 from datetime import datetime
 from typing import Dict, Any, List, Tuple
+import pandas as pd
+import os
 
 # Some constants
 Hartree = 27.211386245988
 Bohr = 0.5291772105638411
 cm1_to_eV = 1 / 8065.54429
 hundredcm1 = 100 * cm1_to_eV * 1000
+
+def dict_to_xls(d, filename, sheet_name="Sheet1", dtype='BE', system='gas',file_create=False):
+    '''
+    dtype: BE=binding energy
+           RE=relative energy
+    '''
+    data = []
+    
+    if system=='gas':
+        max_energies = max([len(energies) for clusters in d.values() for methods in clusters.values() for energies in methods.values()])
+
+        for metal, clusters in d.items():
+            for cluster, methods in clusters.items():
+                for method, energies in methods.items():
+                    if method not in ['B2PLYP','HF','MP2','CCSD','CCSD(T)']: 
+                        row = [metal, cluster, method] + energies + ["" for _ in range(max_energies - len(energies))]
+                        data.append(row)
+
+        if dtype=='BE':
+            df = pd.DataFrame(data, columns=["Metal", "Cluster", "Method"] + [f"Energy_{i+1}(meV/atom)" for i in range(max_energies)])
+        else:
+            df = pd.DataFrame(data, columns=["Metal", "Cluster", "Method"] + [f"Structure {i+1}(meV)" for i in range(max_energies)])
+    elif system=='dimer':
+        dimer_dict = {
+            1: ['OV', 5],
+            2: ['MV', 6],
+            3: ['HV', 3],
+            4: ['HD', 6],
+            5: ['OH', 4],
+            6: ['MH', 5],
+            7: ['OD', 4],
+            8: ['MD', 5]
+        }
+
+
+        for i in ['Au','Ag','Cu']:
+            for j in d['Au'][1]:
+                row = [i,j]
+                for k in range(1,9):
+                    row += [d[i][k][j]]
+                data.append(row)
+
+        df = pd.DataFrame(data, columns=["Metal", "Method"] + [f'{dimer_dict[i][0]} Structure (meV)' for i in range(1, 9)])
+    
+    elif system=='tetramer':
+        for metal, methods in d.items():
+            for method, energies in methods.items():
+                data.append([metal, method] + energies)
+
+        # Create a DataFrame and save as XLSX
+        df = pd.DataFrame(data, columns=["Metal", "Method", "Energy 1 (meV)", "Energy 2 (meV)", "Energy 3 (meV)", "Energy 4 (meV)"])
+    
+    elif system=='au20':
+        for method,energies in d.items():
+            data.append([method] + energies)
+
+        # Create a DataFrame and save as XLSX
+        df = pd.DataFrame(data, columns=["Method", "Energy1(meV)", "Energy2(meV)", "Energy3(meV)"])
+
+    elif system=='au20_cc':
+        for method,energies in d.items():
+            if method not in ['B2PLYP','HF','MP2','CCSD','CCSD(T)']: 
+                data.append([method] + energies)
+
+        # Create a DataFrame and save as XLSX
+        df = pd.DataFrame(data, columns=["Method", "Energy1(meV)", "Energy2(meV)"])
+
+
+    # Check if the Excel file already exists
+    if os.path.exists(filename) and file_create==False:
+        with pd.ExcelWriter(filename, engine='openpyxl', mode='a') as writer:
+            # Append data to the Excel file under a new sheet
+            df.to_excel(writer, sheet_name=sheet_name, index=False)
+    else:
+        # If the file doesn't exist, save as a new file
+        df.to_excel(filename, index=False, engine='openpyxl',sheet_name=sheet_name)
+
+# def xc_gas_relist(xc_functional_list,remove):
+#     '''
+#     Removes certain functionals from the analysis. D2-Ne functionals are redundant for gas phase analysis. 
+#     '''
+#     # Use list comprehension to remove the strings
+#     xc_functional_list = [x for x in xc_functional_list if x not in remove]
+    
+#     return xc_functional_list
+
+# def change_multiple_xc_names(xcs, name_pairs):
+#     '''
+#     Change multiple XC names based on the provided name_pairs.
+    
+#     Parameters:
+#     - xcs: list of XC names
+#     - name_pairs: list of tuples where each tuple has the old name and the new name.
+    
+#     Returns:
+#     - Updated list of XC names
+#     '''
+    
+#     def change_xc_name(xcs, old, new): 
+#         '''
+#         Change a single XC name into a new one.
+#         '''
+#         return [new if item == old else item for item in xcs]
+    
+#     for old, new in name_pairs:
+#         xcs = change_xc_name(xcs, old, new)
+    
+#     return xcs
+
+# xc_functional_list = ['PBE','PBE-D2','PBE-D2-Ne','PBE-DDSC','PBE-D3','PBE-D3BJ','PBE-TS','PBE-TSHI','PBE-D4','PBE-MBDHI',
+#                       'PBE-MBDFI','revPBE','REVPBE-D3','revPBE-D3BJ','revPBE-D4','PBEsol','PBEsol-D3','PBEsol-D4','vdW-DF',
+#                       'vdW-DF2','optB86b-vdW','rev-vdW-DF2','TPSS','R2SCAN','R2SCAN-D3','R2SCAN-D4','R2SCAN-RVV10','SCAN-rVV10',
+#                       'PBE0','PBE0-D30','PBE0-D3','PBE0-D4','PBE0-TSHI','PBE0-MBDHI','PBE0-MBDFI','HSE06','HSE06-D4',
+#                       'B3LYP','B3LYP-D2','B3LYP-D2-Ne','B3LYP-D30','B3LYP-D3','B3LYP-D4']
+
+# xc_functional_list_gas=xc_gas_relist(xc_functional_list,remove=['PBE-D2-Ne','B3LYP-D2-Ne'])
+
+# full_methods_list = xc_functional_list + ['B2PLYP','HF','MP2','CCSD','CCSD(T)']
+# full_methods_list_gas = xc_functional_list_gas + ['B2PLYP','HF','MP2','CCSD','CCSD(T)']
+
+
+# dict_to_xls(xc_rel_ene_list, f'XLSX/data.xlsx', sheet_name="Gas Phase Relative Energy", dtype='RE',file_create=True)
+# dict_to_xls(m2_mgo_xc_bind_ene_list, f'XLSX/data.xlsx', sheet_name="Dimer-MgO Binding Energy", dtype='BE',system='dimer')
+# dict_to_xls(tetramer_mgo_xc_rel_ene_list, f'XLSX/data.xlsx', sheet_name="Tetramer-MgO Relative Energy", dtype='RE',system='tetramer')
+# dict_to_xls(au20_xc_rel_ene_list, f'XLSX/data.xlsx', sheet_name="Au20-MgO Relative Energy", dtype='RE',system='au20')
+# # dict_to_xls(xc_cc_rel_ene_list, f'XLSX/data.xlsx', sheet_name="Au20-MgO deltaCC Relative Energy", dtype='RE',system='au20_cc')
+
 
 
 def get_mrcc_walltime(filename):
