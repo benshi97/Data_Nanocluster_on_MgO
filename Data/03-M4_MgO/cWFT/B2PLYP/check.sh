@@ -6,7 +6,7 @@ for i in Au Ag Cu
 do
 	for j in 1 2 3 4
 	do
-		for k in 1 3
+		for k in 1 2 3
 		do
 			mkdir -p ${i}/${j}/${k}
 			cd ${i}/${j}/${k}
