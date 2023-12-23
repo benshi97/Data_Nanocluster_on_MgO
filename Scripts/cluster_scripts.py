@@ -17,7 +17,7 @@ Bohr = 0.5291772105638411
 cm1_to_eV = 1 / 8065.54429
 hundredcm1 = 100 * cm1_to_eV * 1000
 
-def dict_to_xls(d, filename, sheet_name="Sheet1", dtype='BE', system='gas',file_create=False):
+def dict_to_xls(d,d1, filename, sheet_name="Sheet1", system='gas',file_create=False):
     '''
     dtype: BE=binding energy
            RE=relative energy
@@ -25,19 +25,24 @@ def dict_to_xls(d, filename, sheet_name="Sheet1", dtype='BE', system='gas',file_
     data = []
     
     if system=='gas':
-        max_energies = max([len(energies) for clusters in d.values() for methods in clusters.values() for energies in methods.values()])
+        for method in d['Au'][4]:
+            row = np.append([method],np.array([d[metal][metal_size][method][1:] + [d1[metal][metal_size][method]]  for metal in ['Au','Ag','Cu'] for metal_size in [4,6,8]]).flatten()) 
+            row = np.append(row,[d1['Au']['Total'][method], d1['Ag']['Total'][method], d1['Cu']['Total'][method],d1['Total']['Total'][method]])
+            data.append(row)
 
-        for metal, clusters in d.items():
-            for cluster, methods in clusters.items():
-                for method, energies in methods.items():
-                    if method not in ['B2PLYP','HF','MP2','CCSD','CCSD(T)']: 
-                        row = [metal, cluster, method] + energies + ["" for _ in range(max_energies - len(energies))]
-                        data.append(row)
+        arrays = [
+            np.array([""] + ["Au"]*12 + ["Ag"]*12 + ["Cu"]*12 + ["Overall"]*4),
+            np.array(["DFT"] + ["4 Tetramer"]*4 + ["6 Hexamer"]*4 + ["8 Octamer"]*4 + ["4 Tetramer"]*4 + ["6 Hexamer"]*4 + ["8 Octamer"]*4+ ["4 Tetramer"]*4 + ["6 Hexamer"]*4 + ["8 Octamer"]*4 + ["MAD"]*4 ),
+            np.array(["Model"] + ["Structure 2 (meV)", "Structure 3 (meV)", "Structure 4 (meV)", "MAD (meV)"]*9 + ["Au (meV)","Ag (meV)","Cu (meV)","Overall (meV)"]),
+        ]
 
-        if dtype=='BE':
-            df = pd.DataFrame(data, columns=["Metal", "Cluster", "Method"] + [f"Energy_{i+1}(meV/atom)" for i in range(max_energies)])
-        else:
-            df = pd.DataFrame(data, columns=["Metal", "Cluster", "Method"] + [f"Structure {i+1}(meV)" for i in range(max_energies)])
+
+        df = pd.DataFrame(data, columns=arrays)
+        df['Au'] = df['Au'].astype(float).round(0).astype(int)
+        df['Ag'] = df['Ag'].astype(float).round(0).astype(int)
+        df['Cu'] = df['Cu'].astype(float).round(0).astype(int)
+        df['Overall'] = df['Overall'].astype(float).round(0).astype(int)
+
     elif system=='dimer':
         dimer_dict = {
             1: ['OV', 5],
@@ -51,47 +56,65 @@ def dict_to_xls(d, filename, sheet_name="Sheet1", dtype='BE', system='gas',file_
         }
 
 
-        for i in ['Au','Ag','Cu']:
-            for j in d['Au'][1]:
-                row = [i,j]
-                for k in range(1,9):
-                    row += [d[i][k][j]]
-                data.append(row)
+        for method in d['Au'][1]:
+            row = np.append([method],np.array([[d[metal][x][method] for x in list(range(1,9))] + [d1[metal]['Total'][method]]  for metal in ['Au','Ag','Cu']]).flatten()) 
+            row = np.append(row,[d1['Total']['Total'][method]])
+            data.append(row)
+            
+        arrays = [
+            np.array([""] + ["Au"]*9 + ["Ag"]*9 + ["Cu"]*9 + ["Overall"]),
+            np.array(["Model"] + ([f'{dimer_dict[i][0]} (meV)' for i in range(1, 9)] + ["MAD (meV)"])*3 + ["MAD (meV)"]),
+        ]
+        df = pd.DataFrame(data, columns=arrays)
+        df['Au'] = df['Au'].astype(float).round(0).astype(int)
+        df['Ag'] = df['Ag'].astype(float).round(0).astype(int)
+        df['Cu'] = df['Cu'].astype(float).round(0).astype(int)
+        df['Overall'] = df['Overall'].astype(float).round(0).astype(int)
 
-        df = pd.DataFrame(data, columns=["Metal", "Method"] + [f'{dimer_dict[i][0]} Structure (meV)' for i in range(1, 9)])
-    
+  
     elif system=='tetramer':
-        for metal, methods in d.items():
-            for method, energies in methods.items():
-                data.append([metal, method] + energies)
+        methods = [x for x in d['Au'] if '+CC' not in x]
 
-        # Create a DataFrame and save as XLSX
-        df = pd.DataFrame(data, columns=["Metal", "Method", "Energy 1 (meV)", "Energy 2 (meV)", "Energy 3 (meV)", "Energy 4 (meV)"])
+        for method in methods:
+            row = np.append([method],np.array([[d[metal][method][x] for x in [1,2,3]] + [d1[metal][method]]  for metal in ['Au','Ag','Cu']]).flatten())
+            row = np.append(row,[d1['Total'][method]])
+            row = np.append(row,np.array([[d[metal][method+'+CC'][x] for x in [1,2,3]] + [d1[metal][method+'+CC']]  for metal in ['Au','Ag','Cu']]).flatten())
+            row = np.append(row,[d1['Total'][method + '+CC']])
+            data.append(row)
+      
+        arrays = [
+            np.array( [""] + ["DFT"]*13 + ["DFT+dCC"]*13),
+            np.array(["DFT"] + ["Au"]*4 + ["Ag"]*4 + ["Cu"]*4 + ["Overall"]+ ["Au"]*4 + ["Ag"]*4 + ["Cu"]*4 + ["Overall"]),
+            np.array(["Model"] + ([f'Structure {i} (meV)' for i in [2,3,4]] + ["MAD (meV)"])*3 + ["MAD (meV)"]+ ([f'Structure {i} (meV)' for i in [2,3,4]] + ["MAD (meV)"])*3 + ["MAD (meV)"]),
+        ]
+
+        df = pd.DataFrame(data, columns=arrays)
+        df['DFT'] = df['DFT'].astype(float).round(0).astype(int)
+        df['DFT+dCC'] = df['DFT+dCC'].astype(float).round(0).astype(int)
     
     elif system=='au20':
-        for method,energies in d.items():
-            data.append([method] + energies)
+        for method in d:
+            row = np.append([method],np.array([d[method][x] for x in [1,2]] + [d1[method][x] for x in [1,2]]))
+            data.append(row)
 
-        # Create a DataFrame and save as XLSX
-        df = pd.DataFrame(data, columns=["Method", "Energy1(meV)", "Energy2(meV)", "Energy3(meV)"])
+        arrays = [
+            np.array( [""] + ["DFT"]*2 + ["DFT+dCC"]*2),
+            np.array(["DFT Model"] + ([f'Structure {i} (meV)' for i in [2,3]])*2),
+        ]
 
-    elif system=='au20_cc':
-        for method,energies in d.items():
-            if method not in ['B2PLYP','HF','MP2','CCSD','CCSD(T)']: 
-                data.append([method] + energies)
-
-        # Create a DataFrame and save as XLSX
-        df = pd.DataFrame(data, columns=["Method", "Energy1(meV)", "Energy2(meV)"])
+        df = pd.DataFrame(data, columns=arrays)
+        df['DFT'] = df['DFT'].astype(float).round(0).astype(int)
+        df['DFT+dCC'] = df['DFT+dCC'].astype(float).round(0).astype(int)
 
 
     # Check if the Excel file already exists
     if os.path.exists(filename) and file_create==False:
         with pd.ExcelWriter(filename, engine='openpyxl', mode='a') as writer:
             # Append data to the Excel file under a new sheet
-            df.to_excel(writer, sheet_name=sheet_name, index=False)
+            df.to_excel(writer, sheet_name=sheet_name, index=True)
     else:
         # If the file doesn't exist, save as a new file
-        df.to_excel(filename, index=False, engine='openpyxl',sheet_name=sheet_name)
+        df.to_excel(filename, index=True, engine='openpyxl',sheet_name=sheet_name)
 
 def get_mrcc_walltime(filename):
     """
