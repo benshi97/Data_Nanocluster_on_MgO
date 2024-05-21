@@ -1,5 +1,6 @@
 <a target="_blank" href="https://colab.research.google.com/github/benshi97/Data_Nanocluster_on_MgO/blob/main/analyse.ipynb">
-  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/>
+  <img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/> <a href="https://zenodo.org/doi/10.5281/zenodo.11234636"><img src="https://zenodo.org/badge/672719472.svg" alt="DOI"></a>
+
 </a>
 
 This repository accompanies the paper **Going for Gold(-Standard): Attaining Coupled Cluster Accuracy in Oxide-Supported Nanoclusters** by Benjamin X. Shi, David J. Wales, Angelos Michaelides and Chang Woo Myung.
